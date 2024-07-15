@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools", "wheel", "scikit-build"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tomocupy_stream"
+version = "0.1.0"
+authors = [{ name = "Viktor Nikitin", email = "viktor.nikitin@example.com" }]
+description = "A package for tomocupy streaming"
+readme = "README.md"
+requires-python = ">=3.6"
+dependencies = [
+    "cupy",
+    "scikit-build",
+    "swig",
+    "pywavelets",
+    "numexpr",
+    "astropy",
+    "olefile",
+    "opencv-python-headless",
+    "matplotlib",
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "numpy<2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "mypy",
+    "ruff",
+    "pre-commit",
+    "isort",
+    "pytest-mock",
+    "black",
+]

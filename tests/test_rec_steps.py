@@ -40,8 +40,8 @@ res = cl_recstream.get_res()
 
 # processing and reconstruction
 t = time.time()
-cl_recstream.rec(proj, dark, flat, theta)
-print('Reconstruction by sinogram chunks, time', time.time()-t)
+cl_recstream.rec_steps(proj, dark, flat, theta)
+print('Reconstruction by sinogram and projection chunks, time', time.time()-t)
 print('norm of the result', np.linalg.norm(res[2].astype('float32')))
 
 

@@ -6,6 +6,8 @@ import h5py
 from streamtomocupy import config
 from streamtomocupy import streamrecon
 
+cp.cuda.set_pinned_memory_allocator(cp.cuda.PinnedMemoryPool().malloc)
+
 
 def get_data_pars(args, proj, flat, dark):
     '''Get parameters of the data'''
@@ -37,11 +39,14 @@ cl_recstream = streamrecon.StreamRecon(args)
 print('Create class, time', time.time()-t)
 
 res = cl_recstream.get_res()
-
-# processing and reconstruction
-t = time.time()
-cl_recstream.rec(proj, dark, flat, theta)
-print('Reconstruction by sinogram chunks, time', time.time()-t)
-print('norm of the result', np.linalg.norm(res[2].astype('float32')))
+st = 4
+end = 11
+args.rotation_axis = -1
+t =time.time()
+cl_recstream.proc_sino(res[0], proj, dark, flat)
+cl_recstream.proc_proj(res[1][:,st:end], res[0][:,st:end])
+cl_recstream.rec_sino(res[2][st:end], res[1][:,st:end], theta)
+print('Manual processing and reconstruction by sinogram and projection chunks, time', time.time()-t)
+print('norm of the result', np.linalg.norm(res[2][st:end].astype('float32')))
 
 

@@ -1,7 +1,12 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
 import numpy as np
 import cupy as cp
 import time
-import h5py
 
 from streamtomocupy import config
 from streamtomocupy import streamrecon
@@ -19,29 +24,20 @@ def get_data_pars(args, proj, flat, dark):
     return args        
 
 
-# init parameters with default values. can be done ones
-# config.write_args('test.conf')
-# read parameters
 args = config.read_args('test.conf')
+proj = 100*np.ones([2048,2048,2048],dtype='uint16')
+dark = np.zeros([20,2048,2048],dtype='uint16')
+flat = 200*np.ones([10,2048,2048],dtype='uint16')
+theta = np.linspace(0,2*np.pi,2048).astype('float32')
 
-with h5py.File('test_data.h5','r') as fid:
-    proj = fid['exchange/data'][:]
-    flat = fid['exchange/data_white'][:]
-    dark = fid['exchange/data_dark'][:]
-    theta = fid['exchange/theta'][:]/180*np.pi
 args = get_data_pars(args,proj, flat, dark)
 
 # streaming reconstruction class
 t = time.time()
 cl_recstream = streamrecon.StreamRecon(args)
-print('Create class, time', time.time()-t)
-
-res = cl_recstream.get_res()
+print(time.time()-t)
 
 # processing and reconstruction
 t = time.time()
 cl_recstream.rec(proj, dark, flat, theta)
-print('Reconstruction by sinogram chunks, time', time.time()-t)
-print('norm of the result', np.linalg.norm(res[2].astype('float32')))
-
-
+print(time.time()-t)

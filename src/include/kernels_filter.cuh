@@ -9,7 +9,7 @@ void __global__ mulw(real2 *g, real2 *w, int n, int nproj, int nz)
   if (tx >= n || ty >= nproj || tz >= nz)
     return;
   int g_ind = tx + ty * n + tz * n * nproj;
-  int w_ind = tx;//changed !!!
+  int w_ind = tx + tz * n;
   real2 g0;
   g0.x = g[g_ind].x * w[w_ind].x - g[g_ind].y * w[w_ind].y;
   g0.y = g[g_ind].x * w[w_ind].y + g[g_ind].y * w[w_ind].x;

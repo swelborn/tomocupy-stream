@@ -1,6 +1,6 @@
 #include "cfunc_filter.cuh"
 #include "kernels_filter.cuh"
-#include<stdio.h>
+
 cfunc_filter::cfunc_filter(size_t nproj, size_t nz, size_t n)
     : nproj(nproj), nz(nz), n(n) {
     

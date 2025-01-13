@@ -2,7 +2,7 @@
 StreamTomocuPy
 ========
 
-**StreamTomocuPy** is a Python package for GPU reconstruction of tomographic data in 16-bit and 32-bit precision.
+**StreamTomocuPy** is a Python package for GPU reconstruction of tomographic data with pipeline data processing with Cuda streams and multi GPUs in 16-bit and 32-bit precision.
 
 ================
 Installation

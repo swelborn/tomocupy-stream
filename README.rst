@@ -26,7 +26,7 @@ Install necessary packages
 
 ::
 
-  conda create -n streamtomocupy-test cupy scikit-build swig cmake dxchange pywavelets matplotlib notebook
+  conda create -n streamtomocupy cupy scikit-build swig cmake h5py pywavelets matplotlib notebook
   
   conda activate streamtomocupy
 
@@ -46,4 +46,4 @@ Install streamtomocupy
 Tests
 ================
 
-See /tests. Reconstruction parameters are set in tests.conf file.
+See tests/test.ipynb. Reconstruction parameters are set in tests.conf file.

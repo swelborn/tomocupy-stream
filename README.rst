@@ -2,7 +2,13 @@
 StreamTomocuPy
 ========
 
-**StreamTomocuPy** is a Python package for GPU reconstruction of tomographic data with pipeline data processing with Cuda streams and multi GPUs in 16-bit and 32-bit precision.
+**StreamTomocuPy** is a Python package designed for GPU-accelerated reconstruction of tomographic data, leveraging CUDA streams and multi-GPU setups. It supports both 16-bit and 32-bit precision for efficient, high-performance processing.
+
+While it inherits the core functionality of **TomocuPy**, **StreamTomocuPy** is specifically optimized for fast, streaming data processing, minimizing I/O operations with disk storage. The package’s streaming capabilities and multi-GPU parallelization are abstracted away using a decorator function, making it easy to adjust the code and add new processing functions as needed.
+
+The key functionality is encapsulated in the *StreamRecon* class, located in the *streamrecon.py* module. This class is instantiated once and reused to process data of the same size, or subsets of the data. During the initial setup, the class allocates GPU and pinned memory buffers, output arrays, and initializes necessary methods. This setup may take approximately 10 seconds.
+
+To test the functionality see *tests/test.ipynb*.
 
 ================
 Installation

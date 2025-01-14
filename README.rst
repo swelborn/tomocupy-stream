@@ -66,4 +66,8 @@ Opened with nsys-ui
  
 
 
+Example of output
 
+.. image:: output.png
+   :alt: output
+   :width: 600px

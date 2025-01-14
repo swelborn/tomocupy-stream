@@ -1,9 +1,5 @@
-#!/usr/bin/env python
-# coding: utf-8
 
-# In[1]:
-
-
+# nsys -profile
 import numpy as np
 import cupy as cp
 import time
@@ -32,12 +28,16 @@ theta = np.linspace(0,2*np.pi,2048).astype('float32')
 
 args = get_data_pars(args,proj, flat, dark)
 
+args.reconstruction_algorithm = 'lprec'
+args.dtype = 'float16'
+args.nsino_per_chunk = 16
+args.nproj_per_chunk = 16
 # streaming reconstruction class
 t = time.time()
 cl_recstream = streamrecon.StreamRecon(args)
-print(time.time()-t)
+print('Class creation time:', time.time()-t)
 
 # processing and reconstruction
 t = time.time()
 cl_recstream.rec(proj, dark, flat, theta)
-print(time.time()-t)
+print('Reconstruction time:', time.time()-t)

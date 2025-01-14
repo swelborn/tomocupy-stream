@@ -47,3 +47,23 @@ Tests
 ================
 
 See tests/test.ipynb. Reconstruction parameters are set in tests.conf file.
+
+
+================
+Profiling with Nvidia Nsys
+================
+4x Tesla A100 HBM memory. Parameters args.nsino_per_chunk=16, args.nproj_per_chunk=16, args.reconstruction_algorithm='lprec', args.dtype='float16'
+
+::
+
+   nsys profile python test_2k.py
+
+Opened with nsys-ui
+
+.. image:: nsys.png
+   :alt: Nsys
+   :width: 1200px
+ 
+
+
+

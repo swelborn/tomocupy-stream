@@ -3,6 +3,7 @@ import pywt
 from cupyx.scipy.ndimage import median_filter
 from cupyx.scipy.ndimage import binary_dilation
 from cupyx.scipy.ndimage import uniform_filter1d
+from streamtomocupy.utils import conv2d_kernel, conv_transpose2d_kernel
 
 __all__ = ['DWTForward', 'DWTInverse', 'afb1d', 'remove_all_stripe', 'remove_stripe_fw', 'remove_stripe_ti']
 
@@ -72,12 +73,41 @@ def _conv2d(x, w, stride, pad, groups=1):
                                                         w[:, g*chunko:(g+1)*chunko, :, ii:ii+1, jj:jj+1], axis=2)
     return out
 
-def _conv_transpose2d(x, w, stride, pad, bias=None, groups=1):
+
+
+def _conv2d1(x, w, stride, pad, groups=1):
+    """ Convolution (equivalent pytorch.conv2d)
+    """
+    if pad != 0:
+        x = cp.pad(x, ((0, 0), (0, 0), (pad, pad), (pad, pad)), 'constant')
+
+    b,  ci, hi, wi = x.shape
+    co, _, hk, wk = w.shape
+    ho = int(cp.floor(1 + (hi - hk) / stride[0]))
+    wo = int(cp.floor(1 + (wi - wk) / stride[1]))
+    out = cp.zeros([b, co, ho, wo], dtype='float32')
+    chunk = ci//groups
+    chunko = co//groups
+
+    x = cp.ascontiguousarray(x)
+    w = cp.ascontiguousarray(w)
+    bs = (32, 32, 1)
+    gs = (int(cp.ceil(wo/bs[0])),
+            int(cp.ceil(ho/bs[1])),
+            int(cp.ceil(b/bs[2])))
+    conv2d_kernel(gs, bs, (out, x, w, stride[0], stride[1], 
+                             b, co, ho, wo,
+                             ci, hi, wi, 
+                             groups, chunk, chunko,
+                             hk, wk))
+    return out
+
+def _conv_transpose2d(x, w, stride, pad, groups=1):
     """ Transposed convolution (equivalent pytorch.conv_transpose2d)
     """
     b,  co, ho, wo = x.shape
     co, ci, hk, wk = w.shape
-
+    
     hi = (ho-1)*stride[0]+hk
     wi = (wo-1)*stride[1]+wk
     out = cp.zeros([b, ci, hi, wi], dtype='float32')
@@ -92,6 +122,35 @@ def _conv_transpose2d(x, w, stride, pad, bias=None, groups=1):
     if pad != 0:
         out = out[:, :, pad[0]:out.shape[2]-pad[0], pad[1]:out.shape[3]-pad[1]]
     return out
+
+def _conv_transpose2d1(x, w, stride, pad, groups=1):
+    """ Transposed convolution (equivalent pytorch.conv_transpose2d)
+    """
+    b,  co, ho, wo = x.shape
+    co, ci, hk, wk = w.shape
+    
+    hi = (ho-1)*stride[0]+hk
+    wi = (wo-1)*stride[1]+wk
+    out = cp.zeros([b, ci, hi, wi], dtype='float32')
+    chunk = ci//groups
+    chunko = co//groups
+   
+    mbs = 32
+    bs = (mbs, mbs, 1)
+    gs = (int(cp.ceil(wo/bs[0])),
+            int(cp.ceil(ho/bs[1])),
+            int(cp.ceil(b/bs[2])))
+    x = cp.ascontiguousarray(x)
+    w = cp.ascontiguousarray(w)
+    conv_transpose2d_kernel(gs, bs, (out, x, w, stride[0], stride[1], 
+                    b, co, ho, wo,
+                    ci, hi, wi, 
+                    groups, chunk, chunko,
+                    hk, wk, mbs),shared_mem=(hk+mbs*stride[0])*(wk+mbs*stride[1])*4)
+    if pad != 0:
+        out = out[:, :, pad[0]:out.shape[2]-pad[0], pad[1]:out.shape[3]-pad[1]]
+    return out
+
 
 def afb1d(x, h0, h1='zero', dim=-1):
     """ 1D analysis filter bank (along one dimension only) of an image
@@ -128,7 +187,10 @@ def afb1d(x, h0, h1='zero', dim=-1):
     p = 2 * (outsize - 1) - N + L
     pad = (0, 0, p//2, (p+1)//2) if d == 2 else (p//2, (p+1)//2, 0, 0)
     x = _mypad(x, pad=pad)
-    lohi = _conv2d(x, h, stride=s, pad=0, groups=C)
+    # lohi1 = _conv2d(x, h, stride=s, pad=0, groups=C)
+    lohi = _conv2d1(x, h, stride=s, pad=0, groups=C)
+
+    # print(cp.linalg.norm(lohi-lohi1))
     return lohi
 
 def sfb1d(lo, hi, g0, g1='zero', dim=-1):
@@ -145,9 +207,13 @@ def sfb1d(lo, hi, g0, g1='zero', dim=-1):
     g0 = cp.concatenate([g0.reshape(*shape)]*C, axis=0)
     g1 = cp.concatenate([g1.reshape(*shape)]*C, axis=0)
     pad = (L-2, 0) if d == 2 else (0, L-2)
-    y = _conv_transpose2d(cp.asarray(lo), cp.asarray(g0), stride=s, pad=pad, groups=C) + \
-        _conv_transpose2d(cp.asarray(hi), cp.asarray(g1),
-                          stride=s, pad=pad, groups=C)
+    # y1 = _conv_transpose2d(cp.asarray(lo), cp.asarray(g0), stride=s, pad=pad, groups=C) + \
+    #     _conv_transpose2d(cp.asarray(hi), cp.asarray(g1), stride=s, pad=pad, groups=C)
+    
+    y = _conv_transpose2d1(cp.asarray(lo), cp.asarray(g0), stride=s, pad=pad, groups=C) + \
+        _conv_transpose2d1(cp.asarray(hi), cp.asarray(g1), stride=s, pad=pad, groups=C)
+    
+    # print(cp.linalg.norm(y-y1),cp.linalg.norm(y),cp.linalg.norm(y1))
     return y
 
 class DWTForward():
@@ -261,8 +327,7 @@ def remove_stripe_fw(data, sigma, wname, level):
     cc = []
     sli = cp.zeros([nz, 1, nproj_pad, ni], dtype='float32')
 
-    sli[:, 0, (nproj_pad - nproj)//2:(nproj_pad + nproj) //
-        2] = data.astype('float32').swapaxes(0, 1)
+    sli[:, 0, (nproj_pad - nproj)//2:(nproj_pad + nproj) // 2] = data.astype('float32').swapaxes(0, 1)
     for k in range(level):
         sli, c = xfm.apply(sli)
         cc.append(c)
@@ -276,7 +341,7 @@ def remove_stripe_fw(data, sigma, wname, level):
         # Inverse FFT.
         cc[k][:, 0, 1] = cp.fft.ifft(fcV, my, axis=1).real
 
-    # Wavelet reconstruction.
+    # # Wavelet reconstruction.
     for k in range(level)[::-1]:
         shape0 = cc[k][0, 0, 1].shape
         sli = sli[:, :, :shape0[0], :shape0[1]]

@@ -158,6 +158,5 @@ script
 #
 *.jpg
 .loglogin
-*.png
 *.tiff
 *.npy

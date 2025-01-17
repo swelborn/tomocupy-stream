@@ -1,67 +1,47 @@
-from tomocupy_stream import GPURecRAM
-from tomocupy_stream import find_center
-import h5py
 import numpy as np
-import tifffile
+import cupy as cp
+import time
+import h5py
+
+from streamtomocupy import config
+from streamtomocupy import streamrecon
 
 
-# init data, dark, flat, theta
-with h5py.File('data/test_data.h5', 'r') as fid:
-    data = fid['/exchange/data'][:, :, :]
-    dark = fid['/exchange/data_dark'][:]
-    flat = fid['/exchange/data_white'][:]
-    theta = fid['/exchange/theta'][:]
-data = data.swapaxes(0,1)  # note: sinogram shape
+def get_data_pars(args, proj, flat, dark):
+    '''Get parameters of the data'''
 
-center_search_width = 100
-center_search_step = 0.5
-center_search_ind = data.shape[0]//2
-rotation_axis = find_center.find_center_vo(data, dark, flat,
-                                           ind=center_search_ind,
-                                           smin=-center_search_width, 
-                                           smax=center_search_width, 
-                                           step=center_search_step)
-print('auto rotation axis',rotation_axis)
-# create reconstruction class (preallocate memory, init grids for backprojection)
-# can be done once
-cl = GPURecRAM(
-    n=1536,  # sample size in x
-    nz=22,  # sample size in z
-    nproj=720,  # number of projection angles
-    ncz=8,  # chunk size (multiple of 2)
-    ndark=10,  # number of dark fields
-    nflat=20,  # number of flat fields
-    in_dtype='uint16',  # input data type
-    dtype='float32',  # computation type, note  for float16 n should be a power of 2
-    reconstruction_algorithm='fourierrec',  # fourierrec, lprec, or linerec
+    args.nproj = proj.shape[0]
+    args.nz = proj.shape[1]
+    args.n = proj.shape[2]
+    args.nflat = flat.shape[0]
+    args.ndark = dark.shape[0]
+    args.in_dtype = proj.dtype    
+    return args        
 
-    dezinger=0,  # zinger size (0 - no zingers)
-    # dezinger = 2,  # removing Zingers
-    # dezinger_threshold = 5000,
 
-    remove_stripe_method='None',
-    # remove_stripe_method = 'fw',
-    # fw_sigma = 1,
-    # fw_level = 7,
-    # fw_filter = 'sym16',
+# init parameters with default values. can be done ones
+# config.write_args('test.conf')
+# read parameters
+args = config.read_args('test.conf')
 
-    # remove_stripe_method = 'ti',
-    # ti_beta = 0.022,
-    # ti_mask = 1.0,
-    # remove_stripe_method = 'vo-all',
-    # vo_all_snr=3,
-    # vo_all_la_size=61,
-    # vo_all_sm_size=21,
-    # vo_all_dim=1,
+with h5py.File('test_data.h5','r') as fid:
+    proj = fid['exchange/data'][:]
+    flat = fid['exchange/data_white'][:]
+    dark = fid['exchange/data_dark'][:]
+    theta = fid['exchange/theta'][:]/180*np.pi
+args = get_data_pars(args,proj, flat, dark)
 
-    fbp_filter='parzen',  # filter for fbp
-    rotation_axis=rotation_axis,  # rotation center
-    minus_log=True
-)
+# streaming reconstruction class
+t = time.time()
+cl_recstream = streamrecon.StreamRecon(args)
+print('Create class, time', time.time()-t)
 
-# run recon
-result = cl.recon_all(data, dark, flat, theta)
+res = cl_recstream.get_res()
 
-# save recon
-print(np.linalg.norm(result))
-tifffile.imwrite('data/result.tiff', result)
+# processing and reconstruction
+t = time.time()
+cl_recstream.rec(proj, dark, flat, theta)
+print('Reconstruction by sinogram chunks, time', time.time()-t)
+print('norm of the result', np.linalg.norm(res[2].astype('float32')))
+
+

@@ -118,14 +118,14 @@ class StreamRecon():
             self.cl_proc.remove_stripe(data)
             self.cl_proc.minus_log(data)            
             data = cp.ascontiguousarray(data.swapaxes(0, 1))            
-            data = self.cl_rec.pad360(data)  # may change data shape            
+            data = self.cl_rec.pad360(data)  # may change data shape                        
             self.cl_rec.fbp_filter_center(data)                        
             self.cl_rec.backprojection(res, data, theta)
         return _rec(self, self.res[2], data, dark, flat, theta)
 
     def rec_steps(self, data, dark, flat, theta):
         """Processing with sinogram and projection data chunks, 
-        filtered backprojection with sinogram data chunks"""
+        filtered backprojection with sinogram data chunks"""        
         self.proc_sino(self.res[0], data, dark, flat)
         self.proc_proj(self.res[1], self.res[0])
         self.rec_sino(self.res[2], self.res[1], theta)

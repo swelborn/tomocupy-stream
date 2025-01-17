@@ -52,7 +52,7 @@ class Rec():
         else:
             center = self.args.rotation_axis        
         centeri = center
-        if center < self.ni//2:  # if rotation center is on the left side of the ROI
+        if self.args.file_type=='double_fov' and center < self.ni//2:  # if rotation center is on the left side of the ROI
             center = self.ni-center
         if self.args.reconstruction_algorithm == 'lprec':
             center += 0.5      
@@ -84,8 +84,7 @@ class Rec():
         tmp = cp.pad(
             data, ((0, 0), (0, 0), (self.ne//2-self.n//2, self.ne//2-self.n//2)), mode='edge')
         t = cp.fft.rfftfreq(self.ne).astype('float32')
-        center,_ = self.center_fix()       
-        
+        center,_ = self.center_fix()
         shift = cp.tile(cp.float32(-center+self.n/2), [data.shape[0], 1, 1])      
         w = self.wfilter[igpu]*cp.exp(-2*cp.pi*1j*t * shift)
         self.cl_filter[igpu].filter(tmp, w, stream)

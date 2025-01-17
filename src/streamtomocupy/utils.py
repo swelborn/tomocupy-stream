@@ -176,7 +176,8 @@ conv_transpose2d_kernel = cp.RawKernel(r'''
                         iii = ii+(blockDim.y * blockIdx.y)*stride0;        
                         jjj = jj+(blockDim.x * blockIdx.x)*stride1;                    
                         indo = tz*ci*hi*wi + ig*hi*wi + iii*wi+jjj;
-                        atomicAdd(&(out[indo]), s[indt+ii*(blockDim.x+wk*stride1)+jj]);                                 
+                        if (indo<ci*hi*wi*b)
+                            atomicAdd(&(out[indo]), s[indt+ii*(blockDim.x+wk*stride1)+jj]);                                 
                     }
                 __syncthreads();
             }

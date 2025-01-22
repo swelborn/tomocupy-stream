@@ -52,7 +52,7 @@ void cfunc_fourierrec::free() {
   }
 }
 
-void cfunc_fourierrec::backprojection(size_t f_, size_t g_, size_t theta_, size_t stream_) {
+void cfunc_fourierrec::backprojection(size_t f_, size_t g_, size_t theta_, size_t nproj0, size_t stream_) {
     real2* g = (real2 *)g_;    
     real2* f = (real2 *)f_;
     float* theta = (float *)theta_;
@@ -64,22 +64,22 @@ void cfunc_fourierrec::backprojection(size_t f_, size_t g_, size_t theta_, size_
     // set thread block, grid sizes will be computed before cuda kernel execution
     dim3 dimBlock(32,32,1);    
     dim3 GS2d0,GS3d0,GS3d1,GS3d2,GS3d3;  
-    GS2d0 = dim3(ceil(n / 32.0), ceil(nproj / 32.0));
+    GS2d0 = dim3(ceil(n / 32.0), ceil(nproj0 / 32.0));
     GS3d0 = dim3(ceil(n / 32.0), ceil(n / 32.0),nz);
     GS3d1 = dim3(ceil(2 * n / 32.0), ceil(2 * n / 32.0),nz);
     GS3d2 = dim3(ceil((2 * n + 2 * m) / 32.0),ceil((2 * n + 2 * m) / 32.0), nz);
-    GS3d3 = dim3(ceil(n / 32.0), ceil(nproj / 32.0),nz);
+    GS3d3 = dim3(ceil(n / 32.0), ceil(nproj0 / 32.0),nz);
    
     
     cudaMemsetAsync(fde, 0, (2 * n + 2 * m) * (2 * n + 2 * m) * nz * sizeof(real2),stream);
     
-    takexy <<<GS2d0, dimBlock, 0, stream>>> (x, y, theta, n, nproj);        
-    ifftshiftc <<<GS3d3, dimBlock, 0, stream>>> (g, n, nproj, nz);
+    takexy <<<GS2d0, dimBlock, 0, stream>>> (x, y, theta, n, nproj0);        
+    ifftshiftc <<<GS3d3, dimBlock, 0, stream>>> (g, n, nproj0, nz);
     cufftXtExec(plan1d, g, g, CUFFT_FORWARD);
-    ifftshiftc <<<GS3d3, dimBlock, 0, stream>>> (g, n, nproj, nz);    
-    mulc <<<GS3d3, dimBlock, 0, stream>>> (g, 4/(float)n, n, nproj, nz);
+    ifftshiftc <<<GS3d3, dimBlock, 0, stream>>> (g, n, nproj0, nz);    
+    mulc <<<GS3d3, dimBlock, 0, stream>>> (g, 4/(float)n, n, nproj0, nz);
     
-    gather <<<GS3d3, dimBlock, 0, stream>>> (g, fde, x, y, m, mu, n, nproj, nz);    
+    gather <<<GS3d3, dimBlock, 0, stream>>> (g, fde, x, y, m, mu, n, nproj0, nz);    
     
     wrap <<<GS3d2, dimBlock, 0, stream>>> (fde, n, nz, m);
     
@@ -88,6 +88,6 @@ void cfunc_fourierrec::backprojection(size_t f_, size_t g_, size_t theta_, size_
                &fde[m + m * (2 * n + 2 * m)], CUFFT_INVERSE);
     fftshiftc <<<GS3d2, dimBlock, 0, stream>>> (fde, 2 * n + 2 * m, nz);
     
-    divphi <<<GS3d0, dimBlock, 0, stream>>> (fde, f, mu, n, nz, nproj, m);        
+    divphi <<<GS3d0, dimBlock, 0, stream>>> (fde, f, mu, n, nz, nproj0, m);        
     circ <<<GS3d0, dimBlock, 0, stream>>> (f, 0, n, nz);  
 }

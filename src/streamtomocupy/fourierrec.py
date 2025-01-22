@@ -23,5 +23,5 @@ class FourierRec():
             (data[:self.nz//2, :, :, cp.newaxis], data[self.nz//2:, :, :, cp.newaxis]), axis=3).reshape(data.shape))
         # reuse obj array        
         objc = cp.ascontiguousarray(obj.reshape(self.nz//2, self.n, 2*self.n))
-        self.fslv.backprojection(obj.data.ptr, data.data.ptr,theta.data.ptr, stream.ptr)
+        self.fslv.backprojection(obj.data.ptr, data.data.ptr,theta.data.ptr, len(theta), stream.ptr)
         obj[:] = cp.concatenate((objc[:, :, ::2], objc[:, :, 1::2]))
